@@ -1,0 +1,424 @@
+Data Cleaning & EDA 
+In this project we explore sleep habits and their impact on productivity, mood, and stress levels.
+
+SELECT *
+FROM sleep_productivity;
+
+CREATE TABLE 
+sleep_productivity_staging
+LIKE sleep_productivity;
+
+INSERT sleep_productivity_staging
+SELECT * 
+FROM sleep_productivity;
+
+SELECT * FROM
+sleep_productivity_staging;
+
+-- Remove dupilates
+
+SELECT *,
+ROW_NUMBER() OVER(
+PARTITION BY `Date`, Person_ID) AS row_num
+FROM sleep_productivity_staging;
+
+WITH duplicate_cte AS (
+    SELECT *,
+           ROW_NUMBER() OVER(
+               PARTITION BY `Date`, Person_ID
+           ) AS row_num
+    FROM sleep_productivity_staging
+)
+SELECT *
+FROM duplicate_cte
+WHERE row_num > 1;
+
+SELECT * FROM
+sleep_productivity_staging;
+
+SELECT ROUND(`Work Hours (hrs/day)`,2) AS Work_hours 
+FROM sleep_productivity_staging;
+
+UPDATE sleep_productivity_staging
+SET `Work Hours (hrs/day)` = ROUND(`Work Hours (hrs/day)`,2);
+
+-- Convert time to 12hr format
+
+SELECT 
+    `Sleep Start Time`, 
+    CONCAT(
+        LPAD(FLOOR(`Sleep Start Time`) % 12, 2, '0'), ':', 
+        LPAD(ROUND((`Sleep Start Time` - FLOOR(`Sleep Start Time`)) * 60), 2, '0'),
+        IF(`Sleep Start Time` >= 12, ' PM', ' AM')
+    ) AS sleep_start_time
+FROM sleep_productivity_staging;
+
+ALTER TABLE sleep_productivity_staging ADD COLUMN sleep_start_time VARCHAR(10);
+
+SELECT * FROM
+sleep_productivity_staging;
+
+UPDATE sleep_productivity_staging
+SET sleep_start_time =
+	CONCAT(
+        LPAD(FLOOR(`Sleep Start Time`) % 12, 2, '0'), ':', 
+        LPAD(ROUND((`Sleep Start Time` - FLOOR(`Sleep Start Time`)) * 60), 2, '0'),
+        IF(`Sleep Start Time` >= 12, ' PM', ' AM')
+    );
+
+SELECT 
+    `Sleep End Time`, 
+    CONCAT(
+        LPAD(FLOOR(`Sleep End Time`) % 12, 2, '0'), ':', 
+        LPAD(ROUND((`Sleep End Time` - FLOOR(`Sleep End Time`)) * 60), 2, '0'),
+        IF(`Sleep End Time` >= 12, ' PM', ' AM')
+    ) AS sleep_end_time
+FROM sleep_productivity_staging;
+
+ALTER TABLE sleep_productivity_staging ADD COLUMN sleep_end_time VARCHAR(10);
+
+UPDATE sleep_productivity_staging
+SET sleep_end_time =
+	CONCAT(
+        LPAD(FLOOR(`Sleep Start Time`) % 12, 2, '0'), ':', 
+        LPAD(ROUND((`Sleep Start Time` - FLOOR(`Sleep Start Time`)) * 60), 2, '0'),
+        IF(`Sleep Start Time` >= 12, ' PM', ' AM')
+    );
+
+SELECT * FROM
+sleep_productivity_staging;
+
+-- Remove Blank and Null Values
+SELECT * FROM
+sleep_productivity_staging
+WHERE '' OR NULL;
+
+
+
+-- --------------------------------------GENERAL TENDS & PATTERNS--------------------------------
+-- What is the average total sleep hours across all individuals?
+
+SELECT 
+	AVG(`Total Sleep Hours`)
+    FROM sleep_productivity_staging;
+
+
+-- What is the overall distribution of productivity scores? 
+SELECT *
+    FROM sleep_productivity_staging;
+SELECT 
+	AVG(`Productivity Score`)
+    FROM sleep_productivity_staging;
+    
+SELECT 
+   MAX(`Productivity Score`)
+    FROM sleep_productivity_staging;
+    
+    SELECT 
+   MIN(`Productivity Score`)
+    FROM sleep_productivity_staging;
+    
+-- How do stress levels vary across different age groups?
+
+ SELECT *
+    FROM sleep_productivity_staging;
+    
+SELECT Age, `Stress Level`
+    FROM sleep_productivity_staging;
+    
+ SELECT
+    (CASE
+		WHEN `Age` BETWEEN '18' AND '29' THEN  'Young Adults'
+		WHEN `Age` BETWEEN '30' AND '39' THEN  'Thirtys'
+        WHEN `Age` BETWEEN '40' AND '49' THEN  'Fortys'
+        WHEN `Age` BETWEEN '50' AND '59' THEN  'Fiftys'
+        ELSE '60+' 
+   END
+   ) AS age_group,
+   AVG(`Stress Level`) AS avg_stress_level
+FROM sleep_productivity_staging
+GROUP BY age_group
+ORDER BY age_group DESC;
+
+-- What is the relationship between sleep quality and total sleep hours?
+SELECT *
+    FROM sleep_productivity_staging;
+    
+SELECT *
+    FROM sleep_productivity_staging 
+    WHERE `Sleep Quality` = 10;
+    
+    SELECT 
+    ROUND(`Total Sleep Hours`, 0) AS sleep_hours,
+    AVG(`Sleep Quality`) AS avg_sleep_quality
+FROM sleep_productivity_staging
+GROUP BY sleep_hours
+ORDER BY sleep_hours;
+
+-- -----------------------------------SLEEP & PRODUCTIVITY RELATIONSHIPS----------------------------
+-- Does getting more sleep correlate with higher productivity scores?
+
+SELECT *
+FROM sleep_productivity_staging;
+   SELECT 
+    ROUND(`Total Sleep Hours`, 0) AS sleep_hours,
+    AVG(`Productivity Score`) AS avg_score
+FROM sleep_productivity_staging
+GROUP BY sleep_hours
+ORDER BY sleep_hours;
+
+-- How does sleep start time affect productivity?
+SELECT *
+FROM sleep_productivity_staging;
+
+SELECT 
+    CASE 
+        WHEN `Sleep Start Time` BETWEEN 20 AND 21.99 THEN '8:00 - 9:59 PM'
+        WHEN `Sleep Start Time` BETWEEN 22 AND 23.99 THEN '10:00 - 11:59 PM'
+    END AS sleep_time,
+    AVG(`Productivity Score`) AS avg_score
+FROM sleep_productivity_staging
+GROUP BY sleep_time
+ORDER BY avg_score DESC;
+
+-- Do people who sleep earlier have better productivity and mood scores?
+
+SELECT * FROM 
+sleep_productivity_staging;
+
+SELECT 
+    CASE 
+        WHEN `Sleep Start Time` BETWEEN 20 AND 21.99 THEN '8:00 - 9:59 PM'
+        WHEN `Sleep Start Time` BETWEEN 22 AND 23.99 THEN '10:00 - 11:59 PM'
+    END AS sleep_time,
+    AVG(`Productivity Score`) AS avg_score,
+    AVG (`Mood Score`) AS mood_score
+FROM sleep_productivity_staging
+GROUP BY sleep_time
+ORDER BY avg_score, mood_score DESC;
+
+-- ----------------------------------IMPACT OF LIFESTYLE ON SLEEP PRODUCTIVTY----------------------
+-- Does caffeine intake impact sleep quality or total sleep hours?
+
+SELECT * FROM 
+sleep_productivity_staging;
+
+SELECT AVG(`Caffeine Intake (mg)`)
+FROM sleep_productivity_staging;
+
+SELECT `Caffeine Intake (mg)`,
+`Total Sleep Hours`, `Sleep Quality`
+        FROM sleep_productivity_staging;
+	
+        
+        SELECT 
+    CASE 
+        WHEN `Total Sleep Hours` < 5 THEN 'Less than 5 hrs'
+        WHEN `Total Sleep Hours` BETWEEN 5 AND 6 THEN '5-6 hrs'
+        WHEN `Total Sleep Hours` BETWEEN 7 AND 8 THEN '7-8 hrs'
+        ELSE 'More than 8 hrs'
+    END AS sleep_hrs,
+    ROUND(AVG(`Caffeine Intake (mg)`), 2) AS avg_caffeine,
+    COUNT(*) AS num_people
+FROM sleep_productivity_staging
+GROUP BY sleep_hrs
+ORDER BY avg_caffeine DESC;
+    
+SELECT
+    CASE 
+        WHEN `Sleep Quality` < 4 THEN 'Low'
+        WHEN `Sleep Quality` BETWEEN 4 AND 7 THEN 'Medium'
+        ELSE 'High'
+    END AS sleep_quality,
+    ROUND(AVG(`Caffeine Intake (mg)`), 2) AS avg_caffeine,
+    COUNT(*) AS num_people
+FROM sleep_productivity_staging
+GROUP BY  sleep_quality
+ORDER BY avg_caffeine DESC;
+ -- How does screen time before bed affect sleep quality?
+SELECT  `Screen Time Before Bed (mins)`,
+		`Sleep Quality`
+        FROM sleep_productivity_staging;
+        
+SELECT * FROM sleep_productivity_staging;
+   
+SELECT 
+    (`Sleep Quality`) AS sleep_quality,
+    ROUND(AVG(`Screen Time Before Bed (mins)`), 0) AS avg_time,
+    COUNT(*) AS num_people
+FROM sleep_productivity_staging
+GROUP BY sleep_quality
+ORDER BY avg_time DESC;
+
+-- Does exercise have a positive impact on sleep quality and productivity?
+SELECT * FROM sleep_productivity_staging;
+
+SELECT 
+    (`Sleep Quality`) AS sleep_quality,
+    ROUND(AVG(`Exercise (mins/day)`),0) AS avg_mins
+FROM sleep_productivity_staging
+GROUP BY sleep_quality
+ORDER BY avg_mins DESC;
+
+
+
+SELECT 
+    (`Productivity Score`) AS score,
+    ROUND(AVG(`Exercise (mins/day)`),0) AS avg_mins
+FROM sleep_productivity_staging
+GROUP BY score
+ORDER BY avg_mins DESC;
+
+SELECT 
+    CASE 
+        WHEN `Exercise (mins/day)` = 0 THEN 'No Exercise'
+        WHEN `Exercise (mins/day)` BETWEEN 1 AND 20 THEN 'Low (1-20 mins)'
+        WHEN `Exercise (mins/day)` BETWEEN 21 AND 40 THEN 'Moderate (21-40 mins)'
+        ELSE 'High (41+ mins)'
+    END AS exercise_level,
+
+    ROUND(AVG(`Productivity Score`), 2) AS avg_productivity,
+    COUNT(*) AS num_people
+
+FROM sleep_productivity_staging
+GROUP BY exercise_level
+ORDER BY avg_productivity DESC;
+
+-- How do work hours impact sleep quality and productivity?
+SELECT * FROM 
+sleep_productivity_staging;
+
+SELECT `Sleep Quality`AS sleep_quality,
+AVG(`Work Hours (hrs/day)`) AS avg_hrs
+    FROM sleep_productivity_staging
+    GROUP BY sleep_quality
+    ORDER BY avg_hrs DESC;
+    
+SELECT `Sleep Quality`AS sleep_quality,
+AVG(`Productivity Score`) AS avg_score
+    FROM sleep_productivity_staging
+    GROUP BY sleep_quality
+    ORDER BY avg_score DESC;
+    
+-- Is there a relationship between stress levels and productivity scores?
+
+SELECT `Stress Level`AS stress,
+	AVG(`Productivity Score`) AS score
+    FROM sleep_productivity_staging
+    GROUP BY stress
+    ORDER BY score;
+
+    -- -------------------------------------- DEMOGRAPHICS ANALYSIS--------------------------------
+-- What is the average productivity score across all genders?   
+
+SELECT 
+    Gender,
+   AVG( `Productivity Score`) AS score,
+    COUNT(*) AS num_people
+FROM sleep_productivity_staging
+GROUP BY Gender
+ORDER BY score DESC;
+
+-- How does age affect sleep duration and productivity?
+
+SELECT * FROM sleep_productivity_staging;
+
+SELECT
+    (CASE
+		WHEN `Age` BETWEEN '18' AND '29' THEN  'Young Adults'
+		WHEN `Age` BETWEEN '30' AND '39' THEN  'Thirtys'
+        WHEN `Age` BETWEEN '40' AND '49' THEN  'Fortys'
+        WHEN `Age` BETWEEN '50' AND '59' THEN  'Fiftys'
+        ELSE '60+' 
+   END
+   ) AS age_group,
+   AVG(`Total Sleep Hours`) AS sleep_hrs
+FROM sleep_productivity_staging
+GROUP BY age_group
+ORDER BY age_group DESC;
+
+SELECT
+    (CASE
+		WHEN `Age` BETWEEN '18' AND '29' THEN  'Young Adults'
+		WHEN `Age` BETWEEN '30' AND '39' THEN  'Thirtys'
+        WHEN `Age` BETWEEN '40' AND '49' THEN  'Fortys'
+        WHEN `Age` BETWEEN '50' AND '59' THEN  'Fiftys'
+        ELSE '60+' 
+   END
+   ) AS age_group,
+   AVG(`Productivity Score`) AS score
+FROM sleep_productivity_staging
+GROUP BY age_group
+ORDER BY age_group DESC;
+
+-- 	Are younger individuals more likely to have high caffeine intake and more screen time before bed?
+
+SELECT
+    (CASE
+		WHEN `Age` BETWEEN '18' AND '29' THEN  'Young Adults'
+		WHEN `Age` BETWEEN '30' AND '39' THEN  'Thirtys'
+        WHEN `Age` BETWEEN '40' AND '49' THEN  'Fortys'
+        WHEN `Age` BETWEEN '50' AND '59' THEN  'Fiftys'
+        ELSE '60+' 
+   END
+   ) AS age_group,
+   AVG(`Caffeine Intake (mg)`) AS caffeine
+FROM sleep_productivity_staging
+GROUP BY age_group
+ORDER BY age_group DESC;
+
+SELECT
+    (CASE
+		WHEN `Age` BETWEEN '18' AND '29' THEN  'Young Adults'
+		WHEN `Age` BETWEEN '30' AND '39' THEN  'Thirtys'
+        WHEN `Age` BETWEEN '40' AND '49' THEN  'Fortys'
+        WHEN `Age` BETWEEN '50' AND '59' THEN  'Fiftys'
+        ELSE '60+' 
+   END
+   ) AS age_group,
+   AVG(`Screen Time Before Bed (mins)`) AS screen_time
+FROM sleep_productivity_staging
+GROUP BY age_group
+ORDER BY age_group DESC;
+
+-- Are older individuals more consistent in their sleep schedules?
+
+SELECT * FROM sleep_productivity_staging;
+
+SELECT
+    (CASE
+		WHEN `Age` BETWEEN '18' AND '29' THEN  'Young Adults'
+		WHEN `Age` BETWEEN '30' AND '39' THEN  'Thirtys'
+        WHEN `Age` BETWEEN '40' AND '49' THEN  'Fortys'
+        WHEN `Age` BETWEEN '50' AND '59' THEN  'Fiftys'
+        ELSE '60+' 
+   END
+   ) AS age_group,
+   ROUND(AVG(sleep_start_time),0) AS sleep_start,
+   ROUND(STDDEV(sleep_start_time), 2) AS sleep_start_variability,
+   COUNT(*) AS num_people
+FROM sleep_productivity_staging
+GROUP BY age_group
+ORDER BY age_group DESC;
+
+-- Does sleep quality vary by gender?
+
+SELECT Gender, 
+AVG(`Sleep Quality`) AS avg_sleep_quality
+FROM sleep_productivity_staging
+group by GENDER
+ORDER BY avg_sleep_quality;
+
+SELECT 
+    MIN(`Total Sleep Hours`) AS min_sleep,
+    MAX(`Total Sleep Hours`) AS max_sleep,
+    AVG(`Total Sleep Hours`) AS avg_sleep,
+    STDDEV(`Total Sleep Hours`) AS stddev_sleep
+FROM sleep_productivity_staging;
+
+
+ALTER TABLE sleep_productivity_staging
+DROP COLUMN sleep_start_time;
+
+ALTER TABLE sleep_productivity_staging
+DROP COLUMN sleep_end_time;
