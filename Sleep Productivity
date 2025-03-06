@@ -1,5 +1,5 @@
 Data Cleaning & EDA 
-In this project we explore sleep habits and their impact on productivity, mood, and stress levels.
+In this project we explore lifestyle factors and their impact on productivity, mood, stress levels, and sleep.
 
 SELECT *
 FROM sleep_productivity;
